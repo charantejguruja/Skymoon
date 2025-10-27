@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ice Cream Delivery Billing System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .mode-btn {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .section {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: end;
+        }
+
+        .remove-btn {
+            padding: 12px 20px;
+            background: #e74c3c;
+        }
+
+        .remove-btn:hover {
+            background: #c0392b;
+        }
+
+        .add-item-btn {
+            background: #27ae60;
+            margin-bottom: 20px;
+        }
+
+        .add-item-btn:hover {
+            background: #229954;
+        }
+
+        .bill-preview {
+            margin-top: 30px;
+            padding: 30px;
+            border: 2px solid #333;
+            background: white;
+        }
+
+        .bill-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+        }
+
+        .bill-info {
+            margin-bottom: 20px;
+        }
+
+        .bill-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .bill-table th, .bill-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .bill-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .bill-total {
+            text-align: right;
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+
+        .bill-total div {
+            margin-bottom: 5px;
+        }
+
+        .signature {
+            margin-top: 50px;
+            text-align: right;
+        }
+
+        .signature-line {
+            border-top: 2px solid #333;
+            width: 200px;
+            margin-left: auto;
+            margin-top: 50px;
+            padding-top: 10px;
+        }
+
+        .admin-items {
+            margin-top: 30px;
+        }
+
+        .item-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-msg {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .mode-selector, .form-group, button, .header {
+                display: none !important;
+            }
+            .bill-preview {
+                border: none;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍦 Ice Cream Delivery System</h1>
+            <p>Trip Billing & Inventory Management</p>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn" onclick="showSection('staff')">Staff - Create Bill</button>
+            <button class="mode-btn" onclick="showSection('admin')">Admin Panel</button>
+        </div>
+
+        <!-- Staff Section -->
+        <div id="staff-section" class="section active">
+            <h2>Create Delivery Trip Bill</h2>
+            <div id="staff-success" class="success-msg"></div>
+            <div id="staff-error" class="error-msg"></div>
+            
+            <div class="form-group">
+                <label>Transport/Vehicle</label>
+                <input type="text" id="transport" placeholder="e.g., Van #123">
+            </div>
+
+            <div id="items-container">
+                <div class="item-row">
+                    <div class="form-group">
+                        <label>Item</label>
+                        <select class="item-select">
+                            <option value="">Select item...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" class="item-qty" min="1" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Price</label>
+                        <input type="number" class="item-price" step="0.01" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <button class="add-item-btn" onclick="addItemRow()">+ Add Item</button>
+            <button onclick="generateBill()">Generate Bill</button>
+
+            <div id="bill-preview" class="bill-preview" style="display: none;">
+                <!-- Bill will be generated here -->
+            </div>
+        </div>
+
+        <!-- Admin Section -->
+        <div id="admin-section" class="section">
+            <h2>Admin Panel</h2>
+            <div id="admin-login" style="max-width: 400px; margin: 0 auto;">
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="admin-password">
+                </div>
+                <button onclick="adminLogin()">Login</button>
+            </div>
+
+            <div id="admin-content" style="display: none;">
+                <div id="admin-success" class="success-msg"></div>
+                <div id="admin-error" class="error-msg"></div>
+                
+                <h3>Add New Item</h3>
+                <div class="form-group">
+                    <label>Item Name</label>
+                    <input type="text" id="item-name">
+                </div>
+                <div class="form-group">
+                    <label>Price (₹)</label>
+                    <input type="number" id="item-price" step="0.01">
+                </div>
+                <button onclick="addItem()">Add Item</button>
+
+                <div class="admin-items">
+                    <h3>Current Items</h3>
+                    <div id="items-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://dsdwtvmsmhbgwtwpxrxt.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzZHd0dm1zbWhiZ3d0d3B4cnh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1ODQzODEsImV4cCI6MjA3NzE2MDM4MX0.itZiYo2c71gr7s_W01sAatP9BQyguVll1qzJOrfZ-I4';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const ADMIN_PASSWORD = 'Skymoon@99666'; // Change this!
+        const GST_RATE = 0.18; // 18% GST
+        const COMPANY_NAME = 'Sweet Treats Ice Cream Co.';
+
+        let items = [];
+        let isAdminLoggedIn = false;
+
+        // Initialize
+        loadItems();
+
+        function showSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(section + '-section').classList.add('active');
+            
+            if (section === 'admin' && !isAdminLoggedIn) {
+                document.getElementById('admin-login').style.display = 'block';
+                document.getElementById('admin-content').style.display = 'none';
+            }
+        }
+
+        async function loadItems() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('items')
+                    .select('*')
+                    .order('name');
+
+                if (error) throw error;
+                items = data || [];
+                updateItemSelects();
+                if (isAdminLoggedIn) {
+                    displayAdminItems();
+                }
+            } catch (error) {
+                console.error('Error loading items:', error);
+                showError('staff', 'Could not load items. Please check Supabase configuration.');
+            }
+        }
+
+        function updateItemSelects() {
+            const selects = document.querySelectorAll('.item-select');
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select item...</option>';
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = `${item.name} - ₹${item.price}`;
+                    option.dataset.price = item.price;
+                    select.appendChild(option);
+                });
+                select.value = currentValue;
+            });
+        }
+
+        function addItemRow() {
+            const container = document.getElementById('items-container');
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.innerHTML = `
+                <div class="form-group">
+                    <label>Item</label>
+                    <select class="item-select" onchange="updatePrice(this)">
+                        <option value="">Select item...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" class="item-qty" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Price</label>
+                    <input type="number" class="item-price" step="0.01" readonly>
+                </div>
+                <button class="remove-btn" onclick="removeItemRow(this)">Remove</button>
+            `;
+            container.appendChild(row);
+            updateItemSelects();
+        }
+
+        function removeItemRow(btn) {
+            btn.closest('.item-row').remove();
+        }
+
+        function updatePrice(select) {
+            const row = select.closest('.item-row');
+            const priceInput = row.querySelector('.item-price');
+            const selectedOption = select.options[select.selectedIndex];
+            priceInput.value = selectedOption.dataset.price || 0;
+        }
+
+        async function generateBill() {
+            const transport = document.getElementById('transport').value;
+            const rows = document.querySelectorAll('.item-row');
+            
+            if (!transport) {
+                showError('staff', 'Please enter transport/vehicle information');
+                return;
+            }
+
+            const billItems = [];
+            let subtotal = 0;
+
+            rows.forEach(row => {
+                const select = row.querySelector('.item-select');
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                
+                if (select.value && qty > 0) {
+                    const itemName = select.options[select.selectedIndex].text.split(' - ')[0];
+                    const total = qty * price;
+                    billItems.push({ name: itemName, qty, price, total });
+                    subtotal += total;
+                }
+            });
+
+            if (billItems.length === 0) {
+                showError('staff', 'Please add at least one item');
+                return;
+            }
+
+            const gst = subtotal * GST_RATE;
+            const grandTotal = subtotal + gst;
+            const now = new Date();
+
+            // Save to Supabase
+            try {
+                const { error } = await supabaseClient
+                    .from('trips')
+                    .insert([{
+                        transport,
+                        items: billItems,
+                        subtotal,
+                        gst,
+                        total: grandTotal,
+                        created_at: now.toISOString()
+                    }]);
+
+                if (error) throw error;
+                showSuccess('staff', 'Trip bill saved successfully!');
+            } catch (error) {
+                console.error('Error saving trip:', error);
+                showError('staff', 'Could not save trip. Bill will still be displayed.');
+            }
+
+            // Display bill
+            const billHTML = `
+                <div class="bill-header">
+                    <h2>${COMPANY_NAME}</h2>
+                    <p>Delivery Trip Bill</p>
+                </div>
+                <div class="bill-info">
+                    <p><strong>Transport:</strong> ${transport}</p>
+                    <p><strong>Date:</strong> ${now.toLocaleDateString()}</p>
+                    <p><strong>Time:</strong> ${now.toLocaleTimeString()}</p>
+                </div>
+                <table class="bill-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${billItems.map(item => `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${item.qty}</td>
+                                <td>₹${item.price.toFixed(2)}</td>
+                                <td>₹${item.total.toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="bill-total">
+                    <div><strong>Subtotal:</strong> ₹${subtotal.toFixed(2)}</div>
+                    <div><strong>GST (18%):</strong> ₹${gst.toFixed(2)}</div>
+                    <div style="font-size: 1.2em; margin-top: 10px;"><strong>Grand Total:</strong> ₹${grandTotal.toFixed(2)}</div>
+                </div>
+                <div class="signature">
+                    <div class="signature-line">
+                        Authorized Signature
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('bill-preview').innerHTML = billHTML;
+            document.getElementById('bill-preview').style.display = 'block';
+        }
+
+        function adminLogin() {
+            const password = document.getElementById('admin-password').value;
+            if (password === ADMIN_PASSWORD) {
+                isAdminLoggedIn = true;
+                document.getElementById('admin-login').style.display = 'none';
+                document.getElementById('admin-content').style.display = 'block';
+                loadItems();
+            } else {
+                showError('admin', 'Incorrect password');
+            }
+        }
+
+        async function addItem() {
+            const name = document.getElementById('item-name').value;
+            const price = parseFloat(document.getElementById('item-price').value);
+
+            if (!name || !price) {
+                showError('admin', 'Please fill all fields');
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('items')
+                    .insert([{ name, price }]);
+
+                if (error) throw error;
+                
+                showSuccess('admin', 'Item added successfully!');
+                document.getElementById('item-name').value = '';
+                document.getElementById('item-price').value = '';
+                loadItems();
+            } catch (error) {
+                console.error('Error adding item:', error);
+                showError('admin', 'Could not add item');
+            }
+        }
+
+        async function deleteItem(id) {
+            if (!confirm('Delete this item?')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('items')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                showSuccess('admin', 'Item deleted');
+                loadItems();
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                showError('admin', 'Could not delete item');
+            }
+        }
+
+        function displayAdminItems() {
+            const list = document.getElementById('items-list');
+            list.innerHTML = items.map(item => `
+                <div class="item-card">
+                    <span><strong>${item.name}</strong> - ₹${item.price}</span>
+                    <button class="remove-btn" onclick="deleteItem(${item.id})">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        function showSuccess(section, message) {
+            const el = document.getElementById(section + '-success');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        function showError(section, message) {
+            const el = document.getElementById(section + '-error');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        // Update price when item is selected
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('item-select')) {
+                updatePrice(e.target);
+            }
+        });
+    </script>
+</body>
+</html>
