@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ice Cream Delivery Billing System</title>
+    <title> Sky Moon Ice Creamss </title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -212,6 +214,32 @@
             align-items: center;
         }
 
+        .trip-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .trip-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .trip-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .trip-items {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+
         .success-msg {
             background: #d4edda;
             color: #155724;
@@ -247,7 +275,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🍦 Ice Cream Delivery System</h1>
+            <h1>🍦 Sky Moon Ice Cream </h1>
             <p>Trip Billing & Inventory Management</p>
         </div>
 
@@ -309,7 +337,27 @@
                 <div id="admin-success" class="success-msg"></div>
                 <div id="admin-error" class="error-msg"></div>
                 
-                <h3>Add New Item</h3>
+                <h3>Company Information</h3>
+                <div class="form-group">
+                    <label>Trade Name</label>
+                    <input type="text" id="company-name" placeholder="e.g., Sweet Treats Ice Cream Co.">
+                </div>
+                <div class="form-group">
+                    <label>GST Number</label>
+                    <input type="text" id="gst-number" placeholder="e.g., 29ABCDE1234F1Z5">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea id="company-address" rows="3" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input type="text" id="logo-url" placeholder="e.g., https://example.com/logo.png">
+                    <small style="display: block; margin-top: 5px; color: #666;">Upload logo to image hosting service and paste URL here</small>
+                </div>
+                <button onclick="saveCompanyInfo()">Save Company Info</button>
+
+                <h3 style="margin-top: 40px;">Add New Item</h3>
                 <div class="form-group">
                     <label>Item Name</label>
                     <input type="text" id="item-name">
@@ -324,6 +372,16 @@
                     <h3>Current Items</h3>
                     <div id="items-list"></div>
                 </div>
+
+                <div class="admin-items" style="margin-top: 40px;">
+                    <h3>Trip History</h3>
+                    <div class="form-group">
+                        <label>Filter by Date</label>
+                        <input type="date" id="filter-date" onchange="loadTrips()">
+                    </div>
+                    <button onclick="loadTrips()" style="margin-bottom: 20px;">Load Trips</button>
+                    <div id="trips-list"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -335,15 +393,21 @@
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const ADMIN_PASSWORD = 'Skymoon@99666'; // Change this!
+        const ADMIN_PASSWORD = 'skymoon@99666'; // Change this!
         const GST_RATE = 0.18; // 18% GST
-        const COMPANY_NAME = 'Sweet Treats Ice Cream Co.';
 
         let items = [];
         let isAdminLoggedIn = false;
+        let companyInfo = {
+            name: 'KRUUTHIK FROZEN FOODS ',
+            gst: '37A0XPG3090D17Q',
+            address: '2/4/A,GODOWN NO.2,INDUSTRIAL ESTATE,SAMARLAKOTA-533440,KAKINADA.(AP) PH:7659899666/9553325188 ,E-MAIL:SKYMOON99666@GMAIL.COM',
+            logo: 'ice cream logo.jpg'
+        };
 
         // Initialize
         loadItems();
+        loadCompanyInfo();
 
         function showSection(section) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -483,8 +547,11 @@
             // Display bill
             const billHTML = `
                 <div class="bill-header">
-                    <h2>${COMPANY_NAME}</h2>
-                    <p>Delivery Trip Bill</p>
+                    ${companyInfo.logo ? `<img src="${companyInfo.logo}" alt="Company Logo" style="max-width: 200px; max-height: 100px; margin-bottom: 15px;">` : ''}
+                    <h2>${companyInfo.name}</h2>
+                    ${companyInfo.address ? `<p style="font-size: 0.9em; margin: 5px 0;">${companyInfo.address}</p>` : ''}
+                    ${companyInfo.gst ? `<p style="font-size: 0.9em;"><strong>GST No:</strong> ${companyInfo.gst}</p>` : ''}
+                    <p style="margin-top: 10px;">Delivery Trip Bill</p>
                 </div>
                 <div class="bill-info">
                     <p><strong>Transport:</strong> ${transport}</p>
@@ -534,6 +601,7 @@
                 document.getElementById('admin-login').style.display = 'none';
                 document.getElementById('admin-content').style.display = 'block';
                 loadItems();
+                loadCompanyInfo();
             } else {
                 showError('admin', 'Incorrect password');
             }
@@ -591,6 +659,135 @@
                     <button class="remove-btn" onclick="deleteItem(${item.id})">Delete</button>
                 </div>
             `).join('');
+        }
+
+        async function loadTrips() {
+            const filterDate = document.getElementById('filter-date').value;
+            
+            try {
+                let query = supabaseClient
+                    .from('trips')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (filterDate) {
+                    const startDate = new Date(filterDate);
+                    startDate.setHours(0, 0, 0, 0);
+                    const endDate = new Date(filterDate);
+                    endDate.setHours(23, 59, 59, 999);
+                    
+                    query = query
+                        .gte('created_at', startDate.toISOString())
+                        .lte('created_at', endDate.toISOString());
+                }
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                const tripsList = document.getElementById('trips-list');
+                
+                if (!data || data.length === 0) {
+                    tripsList.innerHTML = '<p>No trips found for this date.</p>';
+                    return;
+                }
+
+                tripsList.innerHTML = data.map(trip => {
+                    const date = new Date(trip.created_at);
+                    return `
+                        <div class="trip-card">
+                            <div class="trip-header">
+                                <span>Transport: ${trip.transport}</span>
+                                <span>₹${trip.total.toFixed(2)}</span>
+                            </div>
+                            <div class="trip-details">
+                                <div><strong>Date:</strong> ${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
+                                <div><strong>Subtotal:</strong> ₹${trip.subtotal.toFixed(2)} | <strong>GST:</strong> ₹${trip.gst.toFixed(2)}</div>
+                            </div>
+                            <div class="trip-items">
+                                <strong>Items:</strong>
+                                ${trip.items.map(item => `${item.name} (${item.qty} × ₹${item.price})`).join(', ')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading trips:', error);
+                showError('admin', 'Could not load trips');
+            }
+        }
+
+        async function loadCompanyInfo() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('company_info')
+                    .select('*')
+                    .limit(1)
+                    .single();
+
+                if (data) {
+                    companyInfo = {
+                        name: data.name || 'Sweet Treats Ice Cream Co.',
+                        gst: data.gst_number || '',
+                        address: data.address || '',
+                        logo: data.logo_url || ''
+                    };
+                    
+                    if (isAdminLoggedIn) {
+                        document.getElementById('company-name').value = companyInfo.name;
+                        document.getElementById('gst-number').value = companyInfo.gst;
+                        document.getElementById('company-address').value = companyInfo.address;
+                        document.getElementById('logo-url').value = companyInfo.logo;
+                    }
+                }
+            } catch (error) {
+                console.log('No company info found, using defaults');
+            }
+        }
+
+        async function saveCompanyInfo() {
+            const name = document.getElementById('company-name').value;
+            const gst = document.getElementById('gst-number').value;
+            const address = document.getElementById('company-address').value;
+            const logo = document.getElementById('logo-url').value;
+
+            if (!name) {
+                showError('admin', 'Please enter company name');
+                return;
+            }
+
+            try {
+                // Check if company info exists
+                const { data: existing } = await supabaseClient
+                    .from('company_info')
+                    .select('id')
+                    .limit(1)
+                    .single();
+
+                if (existing) {
+                    // Update existing
+                    const { error } = await supabaseClient
+                        .from('company_info')
+                        .update({ name, gst_number: gst, address, logo_url: logo })
+                        .eq('id', existing.id);
+                    
+                    if (error) throw error;
+                } else {
+                    // Insert new
+                    const { error } = await supabaseClient
+                        .from('company_info')
+                        .insert([{ name, gst_number: gst, address, logo_url: logo }]);
+                    
+                    if (error) throw error;
+                }
+
+                companyInfo = { name, gst, address, logo };
+                showSuccess('admin', 'Company information saved successfully!');
+            } catch (error) {
+                console.error('Error saving company info:', error);
+                showError('admin', 'Could not save company information');
+            }
         }
 
         function showSuccess(section, message) {
